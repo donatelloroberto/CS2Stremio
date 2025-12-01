@@ -143,7 +143,7 @@ builder.defineCatalogHandler(async (args) => {
     const { type, id, extra } = args;
     const config = parseConfig(args.addonId);
 
-    console.log(\`Requesting catalog: \${id}, type: \${type}, extra: \${JSON.stringify(extra)}, config: \${JSON.stringify(config)}\`);
+    console.log(`Requesting catalog: ${id}, type: ${type}, extra: ${JSON.stringify(extra)}, config: ${JSON.stringify(config)}`);
     console.log(`Requesting catalog: ${id}, type: ${type}, extra: ${JSON.stringify(extra)}`);
 
     if (id === 'gogoanime_catalog' && type === 'series') {
@@ -182,7 +182,7 @@ builder.defineMetaHandler(async (args) => {
     const { type, id } = args;
     const config = parseConfig(args.addonId);
 
-    console.log(\`Requesting meta: \${id}, type: \${type}, config: \${JSON.stringify(config)}\`);
+    console.log(`Requesting meta: ${id}, type: ${type}, config: ${JSON.stringify(config)}`);
     console.log(`Requesting meta: ${id}, type: ${type}`);
 
     if (id.startsWith(GOGO_NAME)) {
@@ -210,7 +210,7 @@ builder.defineStreamHandler(async (args) => {
     const { type, id } = args;
     const config = parseConfig(args.addonId);
 
-    console.log(\`Requesting stream: \${id}, type: \${type}, config: \${JSON.stringify(config)}\`);
+    console.log(`Requesting stream: ${id}, type: ${type}, config: ${JSON.stringify(config)}`);
     console.log(`Requesting stream: ${id}, type: ${type}`);
 
     if (id.startsWith(GOGO_NAME) && config.providers.includes(GOGO_NAME)) {
