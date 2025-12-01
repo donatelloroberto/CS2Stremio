@@ -242,10 +242,10 @@ async function loadStream(id, config) {
     }
 
     // 7. Extract stream links
-    const allSources = [...(sources.source || []), ...(sources.sourceBk || [])];
+    let allSources = [...(sources.source || []), ...(sources.sourceBk || [])];
 
     // 7. Extract and filter stream links based on config
-    const allSources = [...(sources.source || []), ...(sources.sourceBk || [])];
+    // allSources is already declared above, so we reuse it.
     const preferredQuality = config.qualities;
     const resultLimit = config.resultLimit || 5;
 
