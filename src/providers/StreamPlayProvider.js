@@ -1,4 +1,5 @@
 const axios = require('axios');
+const cheerio = require('cheerio');
 
 const TMDB_API_KEY = "1f54bd990f1cdfb230adb312546d765d"; // Placeholder key for structure
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
