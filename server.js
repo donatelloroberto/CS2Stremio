@@ -1,5 +1,6 @@
 const { addonBuilder, serveHTTP } = require('stremio-addon-sdk');
 const { search: gogoSearch, loadMeta: gogoLoadMeta, loadStream: gogoLoadStream, PROVIDER_NAME: GOGO_NAME } = require('./src/providers/GogoanimeProvider');
+const { search: bflixSearch, loadMeta: bflixLoadMeta, loadStream: bflixLoadStream, PROVIDER_NAME: BFLIX_NAME } = require('./src/providers/BflixProvider');
 const { URLSearchParams } = require('url');
 
 // --- Configuration ---
@@ -16,12 +17,24 @@ const manifest = {
         {
             type: 'series',
             id: 'gogoanime_catalog',
-            name: 'Gogoanime',
+            name: 'Gogoanime (Anime)',
+            extra: [{ name: 'search', isRequired: false }]
+        },
+        {
+            type: 'movie',
+            id: 'bflix_movie_catalog',
+            name: 'Bflix (Movies)',
+            extra: [{ name: 'search', isRequired: false }]
+        },
+        {
+            type: 'series',
+            id: 'bflix_series_catalog',
+            name: 'Bflix (Series)',
             extra: [{ name: 'search', isRequired: false }]
         },
         // Add other catalogs here as more providers are integrated
     ],
-    idPrefixes: [GOGO_NAME],
+    idPrefixes: [GOGO_NAME, BFLIX_NAME],
     // Define the configuration page URL structure
     config: [
         {
@@ -100,7 +113,7 @@ function parseConfig(addonId) {
 }
 
 // Global list of all available providers (for dynamic manifest update)
-const ALL_PROVIDERS = [GOGO_NAME];
+const ALL_PROVIDERS = [GOGO_NAME, BFLIX_NAME];
 
 // Update manifest with all providers
 manifest.config.find(c => c.key === 'providers').options = ALL_PROVIDERS;
@@ -123,10 +136,19 @@ builder.defineCatalogHandler(async (args) => {
     if (id === 'gogoanime_catalog' && type === 'series') {
         const searchQuery = extra.search;
         if (searchQuery) {
-            const metas = await gogoSearch(searchQuery);
+            const metas = await gogoSearch(searchQuery, config);
             return Promise.resolve({ metas: metas });
         }
         // For now, we only support search. Implement main page logic later if needed.
+        return Promise.resolve({ metas: [] });
+    } else if ((id === 'bflix_movie_catalog' && type === 'movie') || (id === 'bflix_series_catalog' && type === 'series')) {
+        const searchQuery = extra.search;
+        if (searchQuery) {
+            const metas = await bflixSearch(searchQuery, config);
+            // Filter Bflix results by type for the specific catalog
+            const filteredMetas = metas.filter(meta => meta.type === type);
+            return Promise.resolve({ metas: filteredMetas });
+        }
         return Promise.resolve({ metas: [] });
     }
 
@@ -142,9 +164,13 @@ builder.defineMetaHandler(async (args) => {
     console.log(`Requesting meta: ${id}, type: ${type}`);
 
     if (id.startsWith(GOGO_NAME)) {
-        const meta = await gogoLoadMeta(id);
+        const meta = await gogoLoadMeta(id, config);
         if (meta) {
-            // Stremio expects a single meta object
+            return Promise.resolve({ meta: meta });
+        }
+    } else if (id.startsWith(BFLIX_NAME)) {
+        const meta = await bflixLoadMeta(id, config);
+        if (meta) {
             return Promise.resolve({ meta: meta });
         }
     }
@@ -162,6 +188,9 @@ builder.defineStreamHandler(async (args) => {
 
     if (id.startsWith(GOGO_NAME) && config.providers.includes(GOGO_NAME)) {
         const streams = await gogoLoadStream(id, config);
+        return Promise.resolve({ streams: streams });
+    } else if (id.startsWith(BFLIX_NAME) && config.providers.includes(BFLIX_NAME)) {
+        const streams = await bflixLoadStream(id, config);
         return Promise.resolve({ streams: streams });
     }
 

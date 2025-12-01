@@ -50,7 +50,43 @@ function cryptoHandler(data, iv, secretKeyString, encrypt = true) {
     }
 }
 
+/**
+ * VRF (Vigenere-based Request/Response Function) Encoding for Bflix/Sflix.
+ * Translated from Cloudstream's Kotlin implementation.
+ * @param {string} input - The string to encode.
+ * @param {string} key - The Vigenere key.
+ * @returns {string} The encoded string.
+ */
+function encodeVrf(input, key) {
+    let output = '';
+    for (let i = 0; i < input.length; i++) {
+        const charCode = input.charCodeAt(i);
+        const keyCode = key.charCodeAt(i % key.length);
+        output += String.fromCharCode(charCode + keyCode);
+    }
+    return output;
+}
+
+/**
+ * VRF (Vigenere-based Request/Response Function) Decoding for Bflix/Sflix.
+ * Translated from Cloudstream's Kotlin implementation.
+ * @param {string} input - The string to decode.
+ * @param {string} key - The Vigenere key.
+ * @returns {string} The decoded string.
+ */
+function decodeVrf(input, key) {
+    let output = '';
+    for (let i = 0; i < input.length; i++) {
+        const charCode = input.charCodeAt(i);
+        const keyCode = key.charCodeAt(i % key.length);
+        output += String.fromCharCode(charCode - keyCode);
+    }
+    return output;
+}
+
 module.exports = {
     getKey,
     cryptoHandler,
+    encodeVrf,
+    decodeVrf,
 };
