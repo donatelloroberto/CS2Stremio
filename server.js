@@ -227,7 +227,13 @@ builder.defineStreamHandler(async (args) => {
     return Promise.resolve({ streams: [] });
 });
 
-// --- Serve Addon ---
-const PORT = process.env.PORT || 7000;
-serveHTTP(builder.get = () => builder.getManifest(), { port: PORT });
-console.log(`Stremio Addon running at http://127.0.0.1:${PORT}/manifest.json`);
+// --- Serve Addon (Conditional for Local Development) ---
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+    const PORT = process.env.PORT || 7000;
+    serveHTTP(builder.get = () => builder.getManifest(), { port: PORT });
+    console.log(`Stremio Addon running at http://127.0.0.1:${PORT}/manifest.json`);
+}
+
+// --- Vercel/Serverless Export ---
+// Export the handler function for Vercel to use as a serverless function.
+module.exports = builder.getHandler();
