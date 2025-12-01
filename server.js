@@ -1,6 +1,7 @@
 const { addonBuilder, serveHTTP } = require('stremio-addon-sdk');
 const { search: gogoSearch, loadMeta: gogoLoadMeta, loadStream: gogoLoadStream, PROVIDER_NAME: GOGO_NAME } = require('./src/providers/GogoanimeProvider');
 const { search: bflixSearch, loadMeta: bflixLoadMeta, loadStream: bflixLoadStream, PROVIDER_NAME: BFLIX_NAME } = require('./src/providers/BflixProvider');
+const { search: streamPlaySearch, loadMeta: streamPlayLoadMeta, loadStream: streamPlayLoadStream, PROVIDER_NAME: STREAMPLAY_NAME } = require('./src/providers/StreamPlayProvider');
 const { URLSearchParams } = require('url');
 
 // --- Configuration ---
@@ -22,6 +23,18 @@ const manifest = {
         },
         {
             type: 'movie',
+            id: 'streamplay_movie_catalog',
+            name: 'StreamPlay (Movies)',
+            extra: [{ name: 'search', isRequired: false }]
+        },
+        {
+            type: 'series',
+            id: 'streamplay_series_catalog',
+            name: 'StreamPlay (Series)',
+            extra: [{ name: 'search', isRequired: false }]
+        },
+        {
+            type: 'movie',
             id: 'bflix_movie_catalog',
             name: 'Bflix (Movies)',
             extra: [{ name: 'search', isRequired: false }]
@@ -34,7 +47,7 @@ const manifest = {
         },
         // Add other catalogs here as more providers are integrated
     ],
-    idPrefixes: [GOGO_NAME, BFLIX_NAME],
+    idPrefixes: [GOGO_NAME, BFLIX_NAME, STREAMPLAY_NAME],
     // Define the configuration page URL structure
     config: [
         {
@@ -113,7 +126,7 @@ function parseConfig(addonId) {
 }
 
 // Global list of all available providers (for dynamic manifest update)
-const ALL_PROVIDERS = [GOGO_NAME, BFLIX_NAME];
+const ALL_PROVIDERS = [GOGO_NAME, BFLIX_NAME, STREAMPLAY_NAME];
 
 // Update manifest with all providers
 manifest.config.find(c => c.key === 'providers').options = ALL_PROVIDERS;
@@ -150,6 +163,15 @@ builder.defineCatalogHandler(async (args) => {
             return Promise.resolve({ metas: filteredMetas });
         }
         return Promise.resolve({ metas: [] });
+    } else if ((id === 'streamplay_movie_catalog' && type === 'movie') || (id === 'streamplay_series_catalog' && type === 'series')) {
+        const searchQuery = extra.search;
+        if (searchQuery) {
+            const metas = await streamPlaySearch(searchQuery, config);
+            // Filter StreamPlay results by type for the specific catalog
+            const filteredMetas = metas.filter(meta => meta.type === type);
+            return Promise.resolve({ metas: filteredMetas });
+        }
+        return Promise.resolve({ metas: [] });
     }
 
     return Promise.resolve({ metas: [] });
@@ -173,6 +195,11 @@ builder.defineMetaHandler(async (args) => {
         if (meta) {
             return Promise.resolve({ meta: meta });
         }
+    } else if (id.startsWith(STREAMPLAY_NAME)) {
+        const meta = await streamPlayLoadMeta(id, config);
+        if (meta) {
+            return Promise.resolve({ meta: meta });
+        }
     }
 
     return Promise.resolve({ meta: null });
@@ -191,6 +218,9 @@ builder.defineStreamHandler(async (args) => {
         return Promise.resolve({ streams: streams });
     } else if (id.startsWith(BFLIX_NAME) && config.providers.includes(BFLIX_NAME)) {
         const streams = await bflixLoadStream(id, config);
+        return Promise.resolve({ streams: streams });
+    } else if (id.startsWith(STREAMPLAY_NAME) && config.providers.includes(STREAMPLAY_NAME)) {
+        const streams = await streamPlayLoadStream(id, config);
         return Promise.resolve({ streams: streams });
     }
 
