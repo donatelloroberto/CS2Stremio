@@ -198,12 +198,12 @@ async function loadStream(id, config) {
         // The actual StreamPlay logic would call an extractor for the embedUrl.
         
         // Placeholder for a direct stream link (e.g., from a resolved extractor)
-        const placeholderStream = {
-            name: PROVIDER_NAME,
-            title: \`[StreamPlay] TMDB ID: \${tmdbId}\`,
-            url: \`https://example.com/placeholder/stream/\${tmdbId}\`, // Placeholder URL
-            // In a real scenario, this would be the resolved M3U8/MP4 link
-        };
+    const placeholderStream = {
+    name: PROVIDER_NAME,
+    title: '[StreamPlay] TMDB ID: ' + tmdbId,
+    url: 'https://example.com/placeholder/stream/' + tmdbId // Placeholder URL
+};
+
         
         streams.push(placeholderStream);
 
