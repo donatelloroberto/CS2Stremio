@@ -29,7 +29,7 @@ async function makeRequest(url, headers = {}, params = {}) {
  * @param {string} query 
  * @returns {Promise<Array<object>>}
  */
-async function search(query) {
+async function search(query, config) {
     const url = `${MAIN_URL}/search.html?keyword=${encodeURIComponent(query)}`;
     const html = await makeRequest(url);
     if (!html) return [];
@@ -71,7 +71,7 @@ async function search(query) {
  * @param {string} id - The ID from the search result (e.g., "Gogoanime:/category/anime-name")
  * @returns {Promise<object>}
  */
-async function loadMeta(id) {
+async function loadMeta(id, config) {
     const urlPath = id.split(':')[1];
     const url = MAIN_URL + urlPath;
     const html = await makeRequest(url);
@@ -151,7 +151,7 @@ async function loadMeta(id) {
  * @param {string} id - The ID of the episode (e.g., "Gogoanime:/anime/anime-name-episode-1")
  * @returns {Promise<Array<object>>}
  */
-async function loadStream(id) {
+async function loadStream(id, config) {
     const urlPath = id.split(':')[1];
     const episodeUrl = MAIN_URL + urlPath;
     const streams = [];
@@ -244,7 +244,31 @@ async function loadStream(id) {
     // 7. Extract stream links
     const allSources = [...(sources.source || []), ...(sources.sourceBk || [])];
 
-    allSources.forEach(source => {
+    // 7. Extract and filter stream links based on config
+    const allSources = [...(sources.source || []), ...(sources.sourceBk || [])];
+    const preferredQuality = config.qualities;
+    const resultLimit = config.resultLimit || 5;
+
+    // Simple quality filtering (only supports single quality selection for now)
+    let filteredSources = allSources.filter(source => {
+        if (preferredQuality === 'Any') return true;
+        return source.label && source.label.includes(preferredQuality.replace('p', ''));
+    });
+
+    // Simple sorting (best quality first) - more complex sorting requires more metadata
+    if (config.sortMode === 'best quality first') {
+        const qualityOrder = ['2160p', '1080p', '720p', '480p'];
+        filteredSources.sort((a, b) => {
+            const aIndex = qualityOrder.findIndex(q => a.label && a.label.includes(q.replace('p', '')));
+            const bIndex = qualityOrder.findIndex(q => b.label && b.label.includes(q.replace('p', '')));
+            return aIndex - bIndex; // Lower index (higher quality) comes first
+        });
+    }
+
+    // Apply result limit
+    filteredSources = filteredSources.slice(0, resultLimit);
+
+    filteredSources.forEach(source => {
         if (source.file) {
             streams.push({
                 name: PROVIDER_NAME,
