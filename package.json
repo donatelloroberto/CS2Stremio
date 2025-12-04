@@ -7,11 +7,16 @@
     "dev": "nodemon server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["stremio", "addon", "cloudstream"],
+  "keywords": [
+    "stremio",
+    "addon",
+    "cloudstream"
+  ],
   "author": "",
   "license": "ISC",
   "description": "Unified Stremio addon from Cloudstream providers",
   "dependencies": {
+    "@vercel/analytics": "^1.6.1",
     "axios": "^1.6.0",
     "cheerio": "^1.0.0-rc.12",
     "crypto-js": "^4.2.0",
