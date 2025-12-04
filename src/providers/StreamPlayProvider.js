@@ -49,25 +49,22 @@ return `${TMDB_IMAGE_URL}${path}`;
   const results = [];
 
   data.results.forEach(media => {
-  if (media.media_type === 'movie' || media.media_type === 'tv') {
-  const isMovie = media.media_type === 'movie';
-  const type = isMovie ? 'movie' : 'series';
-  const name = media.title || media.name || media.original_title || media.original_name;
-  const year = (media.release_date || media.first_air_date)?.substring(0, 4);
+      if (media.media_type === 'movie' || media.media_type === 'tv') {
+          const isMovie = media.media_type === 'movie';
+          const type = isMovie ? 'movie' : 'series';
+          const name = media.title || media.name || media.original_title || media.original_name;
+          const year = (media.release_date || media.first_air_date)?.substring(0, 4);
 
-  ```
-       if (name) {
-           results.push({
-               id: `${PROVIDER_NAME}:${media.id}:${media.media_type}`,
-               type: type,
-               name: name,
-               poster: getImageUrl(media.poster_path),
-               year: year,
-           });
-       }
-   }
-  ```
-
+          if (name) {
+              results.push({
+                  id: `${PROVIDER_NAME}:${media.id}:${media.media_type}`,
+                  type: type,
+                  name: name,
+                  poster: getImageUrl(media.poster_path),
+                  year: year,
+              });
+          }
+      }
   });
 
   return results;
@@ -171,20 +168,18 @@ return `${TMDB_IMAGE_URL}${path}`;
   const embedPage = await makeRequest(embedUrl);
   if (!embedPage) return [];
 
-  ```
-   const $ = cheerio.load(embedPage);
+  const $ = cheerio.load(embedPage);
 
-   const placeholderStream = {
-       name: PROVIDER_NAME,
-       title: `[StreamPlay] TMDB ID: ${tmdbId}`,
-       url: `https://example.com/placeholder/stream/${tmdbId}`
-   };
+  const placeholderStream = {
+      name: PROVIDER_NAME,
+      title: `[StreamPlay] TMDB ID: ${tmdbId}`,
+      url: `https://example.com/placeholder/stream/${tmdbId}`
+  };
 
-   streams.push(placeholderStream);
+  streams.push(placeholderStream);
 
-   const resultLimit = config.resultLimit || 5;
-   return streams.slice(0, resultLimit);
-  ```
+  const resultLimit = config.resultLimit || 5;
+  return streams.slice(0, resultLimit);
 
   } catch (e) {
   console.error(`Error in StreamPlay loadStream for ID ${id}:`, e.message);

@@ -1,8 +1,9 @@
-const { addonBuilder, serveHTTP } = require('stremio-addon-sdk');
+const { addonBuilder, serveHTTP, getRouter } = require('stremio-addon-sdk');
 const { search: gogoSearch, loadMeta: gogoLoadMeta, loadStream: gogoLoadStream, PROVIDER_NAME: GOGO_NAME } = require('./src/providers/GogoanimeProvider');
 const { search: bflixSearch, loadMeta: bflixLoadMeta, loadStream: bflixLoadStream, PROVIDER_NAME: BFLIX_NAME } = require('./src/providers/BflixProvider');
 const { search: streamPlaySearch, loadMeta: streamPlayLoadMeta, loadStream: streamPlayLoadStream, PROVIDER_NAME: STREAMPLAY_NAME } = require('./src/providers/StreamPlayProvider');
 const { URLSearchParams } = require('url');
+const customLandingTemplate = require('./src/customLandingTemplate');
 
 // --- Configuration ---
 const manifest = {
@@ -234,5 +235,38 @@ if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
     console.log(`Stremio Addon running at http://127.0.0.1:${PORT}/manifest.json`);
 }
 
-// --- Vercel/Serverless Export ---
-module.exports = builder.getHandler();
+// --- Vercel/Serverless Export with Custom Landing Page ---
+// For Vercel deployment, we create a custom handler that includes our enhanced landing page
+if (process.env.VERCEL) {
+    const addonInterface = builder.getInterface();
+    const router = getRouter(addonInterface);
+    const hasConfig = !!(addonInterface.manifest.config || []).length;
+    const landingHTML = customLandingTemplate(addonInterface.manifest);
+
+    // Add custom landing page routes with Vercel Web Analytics
+    const originalGet = router.get.bind(router);
+    
+    // Override root route
+    router.get('/', (req, res) => {
+        if (hasConfig) {
+            res.writeHead(302, { 'Location': '/configure' });
+            res.end();
+        } else {
+            res.setHeader('content-type', 'text/html');
+            res.end(landingHTML);
+        }
+    });
+
+    // Add configure route for configurable addons
+    if (hasConfig) {
+        router.get('/configure', (req, res) => {
+            res.setHeader('content-type', 'text/html');
+            res.end(landingHTML);
+        });
+    }
+
+    module.exports = router;
+} else {
+    // For non-Vercel environments (like local development with direct export)
+    module.exports = builder.getInterface();
+}
