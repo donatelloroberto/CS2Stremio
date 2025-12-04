@@ -7,7 +7,6 @@ const { URLSearchParams } = require('url');
 // --- Configuration ---
 const manifest = {
     id: 'com.manus.cs2stremio',
-    // Mark the addon as configurable
     configurable: true,
     version: '1.0.0',
     name: 'Cloudstream Unified Addon',
@@ -44,16 +43,14 @@ const manifest = {
             id: 'bflix_series_catalog',
             name: 'Bflix (Series)',
             extra: [{ name: 'search', isRequired: false }]
-        },
-        // Add other catalogs here as more providers are integrated
+        }
     ],
     idPrefixes: [GOGO_NAME, BFLIX_NAME, STREAMPLAY_NAME],
-    // Define the configuration page URL structure
     config: [
         {
             key: 'providers',
             type: 'checkbox',
-            options: [GOGO_NAME], // Will be dynamically updated with all providers
+            options: [GOGO_NAME],
             default: [GOGO_NAME],
             title: 'Enabled Providers',
             required: true
@@ -91,25 +88,31 @@ const manifest = {
         }
     ],
     behaviorHints: {
-        // This addon provides content, not just metadata
         configurable: true,
-        // This addon should be prioritized over others for the content it provides
-        // This is a common practice for multi-source addons
         priority: 1000 
     }
 };
 
 const builder = new addonBuilder(manifest);
 
-// Function to parse the configuration from the addon ID
+// Function to parse the configuration from the addon ID with defaults
 function parseConfig(addonId) {
-    if (!addonId) return {};
+    const defaults = {
+        providers: [GOGO_NAME, BFLIX_NAME, STREAMPLAY_NAME],
+        resultLimit: 5,
+        languages: 'Any',
+        qualities: 'Any',
+        sortMode: 'best quality first'
+    };
+
+    if (!addonId) return defaults;
+
     try {
         const configString = addonId.split('/').pop();
         const params = new URLSearchParams(configString);
-        const config = {};
+        const config = { ...defaults };
+
         for (const [key, value] of params.entries()) {
-            // Handle array-like values from checkboxes
             if (key === 'providers') {
                 config[key] = value.split(',');
             } else if (key === 'resultLimit') {
@@ -121,22 +124,16 @@ function parseConfig(addonId) {
         return config;
     } catch (e) {
         console.error("Error parsing config:", e);
-        return {};
+        return defaults;
     }
 }
 
-// Global list of all available providers (for dynamic manifest update)
+// Global list of all available providers
 const ALL_PROVIDERS = [GOGO_NAME, BFLIX_NAME, STREAMPLAY_NAME];
 
 // Update manifest with all providers
 manifest.config.find(c => c.key === 'providers').options = ALL_PROVIDERS;
 manifest.config.find(c => c.key === 'providers').default = ALL_PROVIDERS;
-
-// --- Helper function to get config and pass it to providers ---
-function getConfigAndCall(handler, args) {
-    const config = parseConfig(args.addonId);
-    return handler(args, config);
-}
 
 // --- Catalog Handler (Search) ---
 builder.defineCatalogHandler(async (args) => {
@@ -144,7 +141,6 @@ builder.defineCatalogHandler(async (args) => {
     const config = parseConfig(args.addonId);
 
     console.log(`Requesting catalog: ${id}, type: ${type}, extra: ${JSON.stringify(extra)}, config: ${JSON.stringify(config)}`);
-    console.log(`Requesting catalog: ${id}, type: ${type}, extra: ${JSON.stringify(extra)}`);
 
     if (id === 'gogoanime_catalog' && type === 'series') {
         const searchQuery = extra.search;
@@ -152,13 +148,11 @@ builder.defineCatalogHandler(async (args) => {
             const metas = await gogoSearch(searchQuery, config);
             return Promise.resolve({ metas: metas });
         }
-        // For now, we only support search. Implement main page logic later if needed.
         return Promise.resolve({ metas: [] });
     } else if ((id === 'bflix_movie_catalog' && type === 'movie') || (id === 'bflix_series_catalog' && type === 'series')) {
         const searchQuery = extra.search;
         if (searchQuery) {
             const metas = await bflixSearch(searchQuery, config);
-            // Filter Bflix results by type for the specific catalog
             const filteredMetas = metas.filter(meta => meta.type === type);
             return Promise.resolve({ metas: filteredMetas });
         }
@@ -167,7 +161,6 @@ builder.defineCatalogHandler(async (args) => {
         const searchQuery = extra.search;
         if (searchQuery) {
             const metas = await streamPlaySearch(searchQuery, config);
-            // Filter StreamPlay results by type for the specific catalog
             const filteredMetas = metas.filter(meta => meta.type === type);
             return Promise.resolve({ metas: filteredMetas });
         }
@@ -183,23 +176,26 @@ builder.defineMetaHandler(async (args) => {
     const config = parseConfig(args.addonId);
 
     console.log(`Requesting meta: ${id}, type: ${type}, config: ${JSON.stringify(config)}`);
-    console.log(`Requesting meta: ${id}, type: ${type}`);
 
-    if (id.startsWith(GOGO_NAME)) {
-        const meta = await gogoLoadMeta(id, config);
-        if (meta) {
-            return Promise.resolve({ meta: meta });
+    try {
+        if (id.startsWith(GOGO_NAME)) {
+            const meta = await gogoLoadMeta(id, config);
+            if (meta) {
+                return Promise.resolve({ meta: meta });
+            }
+        } else if (id.startsWith(BFLIX_NAME)) {
+            const meta = await bflixLoadMeta(id, config);
+            if (meta) {
+                return Promise.resolve({ meta: meta });
+            }
+        } else if (id.startsWith(STREAMPLAY_NAME)) {
+            const meta = await streamPlayLoadMeta(id, config);
+            if (meta) {
+                return Promise.resolve({ meta: meta });
+            }
         }
-    } else if (id.startsWith(BFLIX_NAME)) {
-        const meta = await bflixLoadMeta(id, config);
-        if (meta) {
-            return Promise.resolve({ meta: meta });
-        }
-    } else if (id.startsWith(STREAMPLAY_NAME)) {
-        const meta = await streamPlayLoadMeta(id, config);
-        if (meta) {
-            return Promise.resolve({ meta: meta });
-        }
+    } catch (error) {
+        console.error(`Error loading meta for ${id}:`, error);
     }
 
     return Promise.resolve({ meta: null });
@@ -209,19 +205,23 @@ builder.defineMetaHandler(async (args) => {
 builder.defineStreamHandler(async (args) => {
     const { type, id } = args;
     const config = parseConfig(args.addonId);
+    const enabledProviders = config.providers || ALL_PROVIDERS;
 
     console.log(`Requesting stream: ${id}, type: ${type}, config: ${JSON.stringify(config)}`);
-    console.log(`Requesting stream: ${id}, type: ${type}`);
 
-    if (id.startsWith(GOGO_NAME) && config.providers.includes(GOGO_NAME)) {
-        const streams = await gogoLoadStream(id, config);
-        return Promise.resolve({ streams: streams });
-    } else if (id.startsWith(BFLIX_NAME) && config.providers.includes(BFLIX_NAME)) {
-        const streams = await bflixLoadStream(id, config);
-        return Promise.resolve({ streams: streams });
-    } else if (id.startsWith(STREAMPLAY_NAME) && config.providers.includes(STREAMPLAY_NAME)) {
-        const streams = await streamPlayLoadStream(id, config);
-        return Promise.resolve({ streams: streams });
+    try {
+        if (id.startsWith(GOGO_NAME) && enabledProviders.includes(GOGO_NAME)) {
+            const streams = await gogoLoadStream(id, config);
+            return Promise.resolve({ streams: streams });
+        } else if (id.startsWith(BFLIX_NAME) && enabledProviders.includes(BFLIX_NAME)) {
+            const streams = await bflixLoadStream(id, config);
+            return Promise.resolve({ streams: streams });
+        } else if (id.startsWith(STREAMPLAY_NAME) && enabledProviders.includes(STREAMPLAY_NAME)) {
+            const streams = await streamPlayLoadStream(id, config);
+            return Promise.resolve({ streams: streams });
+        }
+    } catch (error) {
+        console.error(`Error loading streams for ${id}:`, error);
     }
 
     return Promise.resolve({ streams: [] });
@@ -230,10 +230,9 @@ builder.defineStreamHandler(async (args) => {
 // --- Serve Addon (Conditional for Local Development) ---
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
     const PORT = process.env.PORT || 7000;
-    serveHTTP(builder.get = () => builder.getManifest(), { port: PORT });
+    serveHTTP(builder.getInterface(), { port: PORT });
     console.log(`Stremio Addon running at http://127.0.0.1:${PORT}/manifest.json`);
 }
 
 // --- Vercel/Serverless Export ---
-// Export the handler function for Vercel to use as a serverless function.
 module.exports = builder.getHandler();
